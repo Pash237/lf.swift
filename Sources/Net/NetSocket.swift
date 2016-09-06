@@ -23,7 +23,12 @@ class NetSocket: NSObject {
     )
     private var timeoutHandler:(() -> Void)?
 
+    var bytesInQueue: Int = 0
+
     final func doOutput(data data:NSData) -> Int {
+
+        bytesInQueue += data.length
+
         dispatch_async(lockQueue) {
             self.doOutputProcess(UnsafePointer<UInt8>(data.bytes), maxLength: data.length)
         }
@@ -31,6 +36,9 @@ class NetSocket: NSObject {
     }
 
     final func doOutput(bytes bytes:[UInt8]) -> Int {
+
+        bytesInQueue += bytes.count
+
         dispatch_async(lockQueue) {
             self.doOutputProcess(UnsafePointer<UInt8>(bytes), maxLength: bytes.count)
         }
@@ -75,6 +83,12 @@ class NetSocket: NSObject {
             }
             total += length
             totalBytesOut += Int64(length)
+        }
+
+        //track data that waits to be sent
+        bytesInQueue -= maxLength
+        if bytesInQueue < 0 {
+            bytesInQueue = 0
         }
     }
 

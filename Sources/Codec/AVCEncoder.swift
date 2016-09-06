@@ -20,6 +20,8 @@ final class AVCEncoder: NSObject {
         "dataRateLimits",
         "enabledHardwareEncoder", // macOS only
         "maxKeyFrameIntervalDuration",
+        "adaptiveBitrate",
+        "maximumBitrate"
     ]
 
     static let defaultWidth:Int32 = 480
@@ -80,6 +82,10 @@ final class AVCEncoder: NSObject {
             }
         }
     }
+
+    var maximumBitrate:UInt32 = AVCEncoder.defaultBitrate
+    var adaptiveBitrate:Bool = false
+
     var lockQueue:dispatch_queue_t = dispatch_queue_create(
         "com.github.shogo4405.lf.AVCEncoder.lock", DISPATCH_QUEUE_SERIAL
     )

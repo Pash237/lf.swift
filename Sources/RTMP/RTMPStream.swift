@@ -262,6 +262,7 @@ public class RTMPStream: Stream {
     private var dispatcher:IEventDispatcher!
     private var howToPublish:RTMPStream.HowToPublish = .Live
     private var rtmpConnection:RTMPConnection
+    private var bitrateCheckTimer: NSTimer?
 
     public init(rtmpConnection: RTMPConnection) {
         self.rtmpConnection = rtmpConnection
@@ -271,6 +272,8 @@ public class RTMPStream: Stream {
         if (rtmpConnection.connected) {
             rtmpConnection.createStream(self)
         }
+
+        startCheckingForBitrateChanges()
     }
 
     public func receiveAudio(flag:Bool) {
@@ -459,6 +462,8 @@ public class RTMPStream: Stream {
             )))
             self.readyState = .Closed
         }
+
+        stopCheckingForBitrateChanges()
     }
 
     public func send(handlerName:String, arguments:Any?...) {
@@ -577,5 +582,70 @@ extension RTMPStream: RTMPMuxerDelegate {
         OSAtomicAdd64(Int64(length), &info.byteCount)
         videoTimestamp = timestamp + (videoTimestamp - floor(videoTimestamp))
         frameCount = (frameCount + 1) & 0xFF
+    }
+}
+
+// MARK: - Adaptive bitrate
+extension RTMPStream {
+    func startCheckingForBitrateChanges() {
+        bitrateCheckTimer = NSTimer.scheduledTimerWithTimeInterval(2.0, target: self, selector: #selector(adjustBitrate), userInfo: nil, repeats: true)
+    }
+
+    func stopCheckingForBitrateChanges() {
+        bitrateCheckTimer?.invalidate()
+    }
+
+    func adjustBitrate() {
+        print("Bytes in queue: \(rtmpConnection.socket.bytesInQueue / 1024)")
+
+        guard mixer.videoIO.encoder.adaptiveBitrate else {
+            return
+        }
+
+        let needToLowerBitrate = rtmpConnection.socket.bytesInQueue > 100 * 1024
+        let needToIncreaseBitrate = rtmpConnection.socket.bytesInQueue < 10 * 1024
+
+        if needToLowerBitrate || needToIncreaseBitrate {
+            var change: Int;
+            if needToLowerBitrate {
+                change = -50 * 1024
+            } else {
+                change = 100 * 1024
+            }
+
+            if rtmpConnection.socket.bytesInQueue > 300 * 1024 {
+                change = -100 * 1024
+            }
+            if rtmpConnection.socket.bytesInQueue > 500 * 1024 {
+                change = -200 * 1024
+            }
+            if rtmpConnection.socket.bytesInQueue > 1000 * 1024 {
+                change = -500 * 1024
+            }
+            if rtmpConnection.socket.bytesInQueue > 2000 * 1024 {
+                change = -1000 * 1024
+            }
+            if rtmpConnection.socket.bytesInQueue > 4000 * 1024 {
+                change = -2000 * 1024
+            }
+
+            var newBitrate = Int(mixer.videoIO.encoder.bitrate)
+
+            let minimumBitrate = 24 * 1024
+            let maximumBitrate = mixer.videoIO.encoder.maximumBitrate
+
+            newBitrate += change
+
+            if newBitrate < minimumBitrate {
+                newBitrate = minimumBitrate
+            }
+            if newBitrate > Int(maximumBitrate) {
+                newBitrate = Int(maximumBitrate)
+            }
+
+            self.videoSettings["bitrate"] = newBitrate
+
+            logger.debug("New video bitrate: \(newBitrate / 1024)")
+        }
     }
 }
