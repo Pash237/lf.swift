@@ -203,6 +203,8 @@ final class AVCEncoder: NSObject {
         return properties
     }
 
+    private var lastEncodeFrameCallbackTime: CFAbsoluteTime = 0
+
     private var callback:VTCompressionOutputCallback = {(
         outputCallbackRefCon:UnsafeMutablePointer<Void>,
         sourceFrameRefCon:UnsafeMutablePointer<Void>,
@@ -215,6 +217,8 @@ final class AVCEncoder: NSObject {
         let encoder:AVCEncoder = unsafeBitCast(outputCallbackRefCon, AVCEncoder.self)
         encoder.formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer)
         encoder.delegate?.sampleOutput(video: sampleBuffer)
+
+        encoder.lastEncodeFrameCallbackTime = CFAbsoluteTimeGetCurrent()
     }
 
     private var _session:VTCompressionSessionRef? = nil
@@ -261,7 +265,7 @@ final class AVCEncoder: NSObject {
             return
         }
         var flags:VTEncodeInfoFlags = VTEncodeInfoFlags()
-        VTCompressionSessionEncodeFrame(
+        status = VTCompressionSessionEncodeFrame(
             session,
             imageBuffer,
             presentationTimeStamp,
@@ -270,6 +274,18 @@ final class AVCEncoder: NSObject {
             nil,
             &flags
         )
+
+        let timeSinceLastEncodeFrameCallback = CFAbsoluteTimeGetCurrent() - lastEncodeFrameCallbackTime
+        if timeSinceLastEncodeFrameCallback > 1.0 && lastEncodeFrameCallbackTime != 0 {
+            invalidateSession = true
+            lastEncodeFrameCallbackTime = 0
+
+            logger.warning("VideoToolbox stuck. Invalidating compression session...")
+        }
+
+        if status != noErr {
+            print("Error encoding frame: \(status)")
+        }
     }
 
 #if os(iOS)
