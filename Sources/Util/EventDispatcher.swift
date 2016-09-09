@@ -43,6 +43,23 @@ public class Event: NSObject {
     public private(set) var data:Any?
     public private(set) var target:AnyObject? = nil
 
+    /**
+     *  Use it to access event data from Objective-C (which doesn't support “Any”)
+     */
+    public var dataDictionary:[String: String]?
+    {
+        if let data = data as? ASObject {
+            var result = [String: String]()
+            for (key, value) in data {
+                if let v = value as? String {
+                    result[key] = v
+                }
+            }
+            return result
+        }
+        return nil
+    }
+
     public override var description:String {
         return Mirror(reflecting: self).description
     }
