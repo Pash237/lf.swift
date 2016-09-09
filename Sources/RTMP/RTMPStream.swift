@@ -272,8 +272,6 @@ public class RTMPStream: Stream {
         if (rtmpConnection.connected) {
             rtmpConnection.createStream(self)
         }
-
-        startCheckingForBitrateChanges()
     }
 
     public func receiveAudio(flag:Bool) {
@@ -440,6 +438,10 @@ public class RTMPStream: Stream {
 
             self.readyState = .Publish
         }
+
+        if name != nil {
+            startCheckingForBitrateChanges()
+        }
     }
 
     public func close() {
@@ -448,6 +450,7 @@ public class RTMPStream: Stream {
         }
         play()
         publish(nil)
+        stopCheckingForBitrateChanges()
         dispatch_sync(lockQueue) {
             self.rtmpConnection.socket.doOutput(chunk: RTMPChunk(
                 type: .Zero,
@@ -462,8 +465,6 @@ public class RTMPStream: Stream {
             )))
             self.readyState = .Closed
         }
-
-        stopCheckingForBitrateChanges()
     }
 
     public func send(handlerName:String, arguments:Any?...) {
@@ -593,17 +594,20 @@ extension RTMPStream {
 
     func stopCheckingForBitrateChanges() {
         bitrateCheckTimer?.invalidate()
+        bitrateCheckTimer = nil
     }
 
     func adjustBitrate() {
-        print("Bytes in queue: \(rtmpConnection.socket.bytesInQueue / 1024)")
+        print("In queue: \(rtmpConnection.socket.bytesInQueue / 1024) kb, totalBytesOut: \(rtmpConnection.socket.totalBytesOut / 1024) kb, totalVideoBytes: \(totalVideoBytes / 1024) kb")
 
         guard mixer.videoIO.encoder.adaptiveBitrate else {
             return
         }
 
-        let needToLowerBitrate = rtmpConnection.socket.bytesInQueue > 100 * 1024
-        let needToIncreaseBitrate = rtmpConnection.socket.bytesInQueue < 10 * 1024
+        let bytesInQueue = rtmpConnection.socket.bytesInQueue
+
+        let needToLowerBitrate = bytesInQueue > 100 * 1024
+        let needToIncreaseBitrate = bytesInQueue < 10 * 1024
 
         if needToLowerBitrate || needToIncreaseBitrate {
             var change: Int;
@@ -613,25 +617,25 @@ extension RTMPStream {
                 change = 100 * 1024
             }
 
-            if rtmpConnection.socket.bytesInQueue > 300 * 1024 {
+            if bytesInQueue > 300 * 1024 {
                 change = -100 * 1024
             }
-            if rtmpConnection.socket.bytesInQueue > 500 * 1024 {
+            if bytesInQueue > 500 * 1024 {
                 change = -200 * 1024
             }
-            if rtmpConnection.socket.bytesInQueue > 1000 * 1024 {
+            if bytesInQueue > 1000 * 1024 {
                 change = -500 * 1024
             }
-            if rtmpConnection.socket.bytesInQueue > 2000 * 1024 {
+            if bytesInQueue > 2000 * 1024 {
                 change = -1000 * 1024
             }
-            if rtmpConnection.socket.bytesInQueue > 4000 * 1024 {
+            if bytesInQueue > 4000 * 1024 {
                 change = -2000 * 1024
             }
 
             var newBitrate = Int(mixer.videoIO.encoder.bitrate)
 
-            let minimumBitrate = 24 * 1024
+            let minimumBitrate = 1 * 1024
             let maximumBitrate = mixer.videoIO.encoder.maximumBitrate
 
             newBitrate += change
