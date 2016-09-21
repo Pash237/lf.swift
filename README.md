@@ -13,7 +13,9 @@ Camera and Microphone streaming library via RTMP, HLS for iOS, macOS.
 - [x] SharedObject
 - [x] RTMPS
  - [x] Native (RTMP over SSL/TSL)
- - [ ] ~~Tunneled (RTMPT over SSL/TSL)~~
+ - [ ] Tunneled (RTMPT over SSL/TSL) (Technical Preview)
+- [ ] _RTMPT (Technical Preview)_
+- [ ] _ReplayKit Live as a Broadcast Upload Extension (Technical Preview)_
 
 ### HLS
 - [x] HTTPService
@@ -26,7 +28,12 @@ Camera and Microphone streaming library via RTMP, HLS for iOS, macOS.
 ## Requirements
 * iOS 8.0+
 * macOS 10.11+
-* xcode 7.3+
+* xcode 8.0+
+
+## Requirements Cocoa Keys
+iOS10.0+
+* NSMicrophoneUsageDescription
+* NSCameraUsageDescription
 
 ## Installation
 ### CocoaPods
@@ -35,7 +42,7 @@ source 'https://github.com/CocoaPods/Specs.git'
 use_frameworks!
 
 def import_pods
-    pod 'lf', '~> 0.4.0'
+    pod 'lf', '~> 0.5.0'
 end
 
 target 'Your Target'  do
@@ -48,13 +55,13 @@ end
 Real Time Messaging Protocol (RTMP).
 ```swift
 var rtmpConnection:RTMPConnection = RTMPConnection()
-var rtmpStream:RTMPStream = RTMPStream(rtmpConnection: rtmpConnection)
-rtmpStream.attachAudio(AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeAudio))
-rtmpStream.attachCamera(AVMixer.deviceWithPosition(.Back))
+var rtmpStream:RTMPStream = RTMPStream(connection: rtmpConnection)
+rtmpStream.attach(audio: AVCaptureDevice.defaultDevice(withMediaType: AVMediaTypeAudio))
+rtmpStream.attach(camera: DeviceUtil.device(withPosition: .Back))
 
 var lfView:LFView = LFView(frame: view.bounds)
 lfView.videoGravity = AVLayerVideoGravityResizeAspectFill
-lfView.attachStream(rtmpStream)
+lfView.attach(stream: rtmpStream)
 
 // add ViewController#view
 view.addSubview(lfView)
@@ -62,11 +69,11 @@ view.addSubview(lfView)
 rtmpConnection.connect("rtmp://localhost/appName/instanceName")
 rtmpStream.publish("streamName")
 // if you want to record a stream.
-// rtmpStream.publish("streamName", type: .LocalRecord)
+// rtmpStream.publish("streamName", withType: .LocalRecord)
 ```
 ### Settings
 ```swift
-var rtmpStream:RTMPStream = RTMPStream(rtmpConnection: rtmpConnection)
+var rtmpStream:RTMPStream = RTMPStream(connection: rtmpConnection)
 rtmpStream.captureSettings = [
     "fps": 30, // FPS
     "sessionPreset": AVCaptureSessionPresetMedium, // input video width/height
@@ -108,25 +115,25 @@ rtmpConnection.connect("rtmp://username:password@localhost/appName/instanceName"
 ### Screen Capture
 ```swift
 // iOS
-rtmpStream.attachScreen(ScreenCaptureSession())
+rtmpStream.attach(screen: ScreenCaptureSession())
 // macOS
-rtmpStream.attachScreen(AVCaptureScreenInput(displayID: CGMainDisplayID()))
+rtmpStream.attach(screen: AVCaptureScreenInput(displayID: CGMainDisplayID()))
 ```
 
 ## HTTP Usage
 HTTP Live Streaming (HLS). Your iPhone/Mac become a IP Camera. Basic snipet. You can see http://ip.address:8080/hello/playlist.m3u8 
 ```swift
 var httpStream:HTTPStream = HTTPStream()
-httpStream.attachCamera(AVMixer.deviceWithPosition(.Back))
-httpStream.attachAudio(AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeAudio))
+httpStream.attach(camera: AVMixer.deviceWithPosition(.Back))
+httpStream.attach(audio: AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeAudio))
 httpStream.publish("hello")
 
 var lfView:LFView = LFView(frame: view.bounds)
-lfView.attachStream(httpStream)
+lfView.attach(stream: httpStream)
 
 var httpService:HTTPService = HTTPService(domain: "", type: "_http._tcp", name: "lf", port: 8080)
 httpService.startRunning()
-httpService.addHTTPStream(httpStream)
+httpService.add(httpStream: httpStream)
 
 // add ViewController#view
 view.addSubview(lfView)
@@ -138,6 +145,7 @@ New BSD
 ## Enviroment
 |lf|iOS|OSX|Swift|CocoaPods|Carthage|
 |:----:|:----:|:----:|:----:|:----:|:----:|
+|0.5|8.0|10.11|3.0|1.1.0|◯|
 |0.4|8.0|10.11|2.3|1.0.0|◯|
 |0.3|8.0|10.11|2.3|1.0.0|-|
 |0.2|8.0|-|2.3|0.39.0|-|
