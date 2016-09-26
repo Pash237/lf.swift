@@ -242,7 +242,6 @@ open class RTMPStream: NetStream {
                 send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
                 mixer.audioIO.encoder.startRunning()
                 mixer.videoIO.encoder.startRunning()
-                sampler.startRunning()
                 if (howToPublish == .localRecord) {
                     mixer.recorder.fileName = info.resourceName
                     mixer.recorder.startRunning()
@@ -258,7 +257,6 @@ open class RTMPStream: NetStream {
 
     fileprivate(set) var audioPlayback:RTMPAudioPlayback = RTMPAudioPlayback()
     fileprivate var muxer:RTMPMuxer = RTMPMuxer()
-    fileprivate var sampler:MP4Sampler = MP4Sampler()
     fileprivate var frameCount:UInt16 = 0
     fileprivate var chunkTypes:[FLVTagType:Bool] = [:]
     fileprivate var dispatcher:IEventDispatcher!
@@ -394,7 +392,6 @@ open class RTMPStream: NetStream {
                 self.mixer.videoIO.encoder.delegate = nil
                 self.mixer.audioIO.encoder.stopRunning()
                 self.mixer.videoIO.encoder.stopRunning()
-                self.sampler.stopRunning()
                 self.mixer.recorder.stopRunning()
                 self.FCUnpublish()
                 self.rtmpConnection.socket.doOutput(chunk: RTMPChunk(
@@ -504,7 +501,7 @@ open class RTMPStream: NetStream {
     }
 
     func append(url:URL, completionHandler: MP4Sampler.Handler? = nil) {
-        sampler.append(file: url, completionHandler: completionHandler)
+        //TODO: remove all unused functionality (with MP4Sampler) from the library?
     }
 
     func on(timer:Timer) {
