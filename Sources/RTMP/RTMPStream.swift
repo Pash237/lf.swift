@@ -384,7 +384,11 @@ open class RTMPStream: NetStream {
                     }
                     return
                 }
+
+                logger.debug("Stop publishing")
+
                 self.readyState = .open
+                self.removeOutputDelegates()
                 #if os(iOS)
                 self.mixer.videoIO.screen?.stopRunning()
                 #endif
@@ -394,6 +398,7 @@ open class RTMPStream: NetStream {
                 self.mixer.videoIO.encoder.stopRunning()
                 self.mixer.recorder.stopRunning()
                 self.FCUnpublish()
+                self.stopCheckingForBitrateChanges()
                 self.rtmpConnection.socket.doOutput(chunk: RTMPChunk(
                     type: .zero,
                     streamId: RTMPChunk.StreamID.audio.rawValue,
@@ -412,8 +417,11 @@ open class RTMPStream: NetStream {
                 usleep(100)
             }
 
+            logger.debug("Start publishing \(name)")
+
             self.info.resourceName = name
             self.howToPublish = type
+            self.addOutputDelegates()
             self.muxer.dispose()
             self.muxer.delegate = self
             #if os(iOS)
@@ -421,10 +429,10 @@ open class RTMPStream: NetStream {
             #endif
             self.mixer.audioIO.encoder.delegate = self.muxer
             self.mixer.videoIO.encoder.delegate = self.muxer
-            self.sampler.delegate = self.muxer
             self.mixer.startRunning()
             self.chunkTypes.removeAll()
             self.FCPublish()
+            self.startCheckingForBitrateChanges()
             self.rtmpConnection.socket.doOutput(chunk: RTMPChunk(
                 type: .zero,
                 streamId: RTMPChunk.StreamID.audio.rawValue,
@@ -439,10 +447,6 @@ open class RTMPStream: NetStream {
 
             self.readyState = .publish
         }
-
-        if name != nil {
-            startCheckingForBitrateChanges()
-        }
     }
 
     open func close() {
@@ -451,7 +455,6 @@ open class RTMPStream: NetStream {
         }
         play()
         publish(nil)
-        stopCheckingForBitrateChanges()
         
         lockQueue.sync {
             self.rtmpConnection.socket.doOutput(chunk: RTMPChunk(

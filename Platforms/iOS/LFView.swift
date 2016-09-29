@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import UIKit
 
 open class LFView: UIView {
     open static var defaultBackgroundColor:UIColor = UIColor.black
@@ -8,19 +9,20 @@ open class LFView: UIView {
         return AVCaptureVideoPreviewLayer.self
     }
 
-    public var videoGravity:String = AVLayerVideoGravityResizeAspect {
+    var previewLayer: AVCaptureVideoPreviewLayer {
+        return self.layer as! AVCaptureVideoPreviewLayer
+    }
+
+    public var videoGravity:String = AVLayerVideoGravityResizeAspectFill {
         didSet {
-            layer.setValue(videoGravity, forKey: "videoGravity")
+            previewLayer.videoGravity = videoGravity
         }
     }
 
     var orientation:AVCaptureVideoOrientation = .portrait {
         didSet {
-            guard let connection:AVCaptureConnection = layer.value(forKey: "connection") as? AVCaptureConnection else {
-                return
-            }
-            if (connection.isVideoOrientationSupported) {
-                connection.videoOrientation = orientation
+            if (previewLayer.connection.isVideoOrientationSupported) {
+                previewLayer.connection.videoOrientation = orientation
             }
         }
     }
@@ -48,13 +50,60 @@ open class LFView: UIView {
         backgroundColor = LFView.defaultBackgroundColor
         layer.contentsGravity = kCAGravityResizeAspect
         layer.backgroundColor = LFView.defaultBackgroundColor.cgColor
+
+        setupCaptureSession()
+        previewLayer.session = AVCaptureSession.shared
     }
 
-    open func attach(stream:NetStream?) {
-        layer.setValue(stream?.mixer.session, forKey: "session")
-        stream?.mixer.videoIO.drawable = self
-        currentStream = stream
+    func setupCaptureSession() {
+        let session = AVCaptureSession.shared
+
+        do {
+            let videoInput = AVCaptureDevice.cameraWithPosition(position: .back)
+            try! session.addInput(AVCaptureDeviceInput(device: videoInput))
+
+            let videoOutput = AVCaptureVideoDataOutput()
+            videoOutput.alwaysDiscardsLateVideoFrames = true
+            session.addOutput(videoOutput)
+
+            if let connection = videoOutput.connection(withMediaType: AVMediaTypeVideo) {
+                if (connection.isVideoOrientationSupported) {
+                    connection.videoOrientation = DeviceUtil.videoOrientation(by: UIApplication.shared.statusBarOrientation)
+                }
+            }
+        }
+
+        do {
+            let audioInput = AVCaptureDevice.defaultAudioInputDevice()
+            try! session.addInput(AVCaptureDeviceInput(device: audioInput))
+
+            let audioOutput = AVCaptureAudioDataOutput()
+            session.addOutput(audioOutput)
+
+            session.automaticallyConfiguresApplicationAudioSession = true
+        }
     }
+
+    open override func willMove(toSuperview newSuperview: UIView?) {
+        if newSuperview != nil {
+            logger.debug("starting AVCaptureSession")
+            AVCaptureSession.shared.startRunning()
+        } else {
+            logger.debug("stopping AVCaptureSession")
+            AVCaptureSession.shared.stopRunning()
+            _sharedAVCaptureSession = nil
+        }
+    }
+
+    open override func layoutSubviews() {
+        if (self.previewLayer.connection.isVideoOrientationSupported) {
+            let orientation = DeviceUtil.videoOrientation(by: UIApplication.shared.statusBarOrientation)
+            if (self.previewLayer.connection.videoOrientation != orientation) {
+                self.previewLayer.connection.videoOrientation = orientation
+            }
+        }
+    }
+    
 }
 
 extension LFView: NetStreamDrawable {

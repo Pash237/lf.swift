@@ -45,15 +45,16 @@ final class VideoIOComponent: IOComponent {
 
     var videoSettings:[NSObject:AnyObject] = AVMixer.defaultVideoSettings {
         didSet {
-            output.videoSettings = videoSettings
+            output?.videoSettings = videoSettings
         }
     }
 
     var orientation:AVCaptureVideoOrientation = .portrait {
         didSet {
-            guard orientation != oldValue else {
-                return
-            }
+            guard orientation != oldValue, let output = output
+                else {
+                    return
+                }
             drawable?.orientation = orientation
             for connection in output.connections {
                 if let connection:AVCaptureConnection = connection as? AVCaptureConnection {
@@ -171,25 +172,8 @@ final class VideoIOComponent: IOComponent {
     }
 
     fileprivate var _output:AVCaptureVideoDataOutput? = nil
-    var output:AVCaptureVideoDataOutput! {
-        get {
-            if (_output == nil) {
-                _output = AVCaptureVideoDataOutput()
-                _output!.alwaysDiscardsLateVideoFrames = true
-                _output!.videoSettings = videoSettings
-            }
-            return _output!
-        }
-        set {
-            if (_output == newValue) {
-                return
-            }
-            if let output:AVCaptureVideoDataOutput = _output {
-                output.setSampleBufferDelegate(nil, queue: nil)
-                mixer.session.removeOutput(output)
-            }
-            _output = newValue
-        }
+    var output:AVCaptureVideoDataOutput? {
+        return mixer.session.videoOutput
     }
 
     fileprivate(set) var input:AVCaptureInput? = nil {
@@ -229,43 +213,21 @@ final class VideoIOComponent: IOComponent {
         decoder.delegate = self
     }
 
-    func attach(camera:AVCaptureDevice?) {
-        output = nil
-        guard let camera:AVCaptureDevice = camera else {
-            input = nil
-            return
-        }
-        #if os(iOS)
-        screen = nil
-        #endif
-        do {
-            input = try AVCaptureDeviceInput(device: camera)
-            mixer.session.addOutput(output)
-            for connection in output.connections {
-                guard let connection:AVCaptureConnection = connection as? AVCaptureConnection else {
-                    continue
-                }
-                if (connection.isVideoOrientationSupported) {
-                    connection.videoOrientation = orientation
-                }
-            }
+    deinit {
+        removeCaptureSessionOutputDelegate()
+    }
+
+    func addCaptureSessionOutputDelegate() {
+        if let output = mixer.session.videoOutput {
             output.setSampleBufferDelegate(self, queue: lockQueue)
-        } catch let error as NSError {
-            logger.error("\(error)")
         }
 
         fps = fps * 1
-        drawable?.position = camera.position
+    }
 
-        do {
-            try camera.lockForConfiguration()
-            let torchMode:AVCaptureTorchMode = torch ? .on : .off
-            if (camera.isTorchModeSupported(torchMode)) {
-                camera.torchMode = torchMode
-            }
-            camera.unlockForConfiguration()
-        } catch let error as NSError {
-            logger.error("\(error)")
+    func removeCaptureSessionOutputDelegate() {
+        if let output = mixer.session.videoOutput {
+            output.setSampleBufferDelegate(nil, queue: nil)
         }
     }
 
@@ -289,7 +251,6 @@ final class VideoIOComponent: IOComponent {
             return
         }
         input = nil
-        output = nil
         if (useScreenSize) {
             encoder.setValuesForKeys([
                 "width": screen.attributes["Width"]!,
@@ -352,24 +313,29 @@ final class VideoIOComponent: IOComponent {
 extension VideoIOComponent: AVCaptureVideoDataOutputSampleBufferDelegate {
     // MARK: AVCaptureVideoDataOutputSampleBufferDelegate
     func captureOutput(_ captureOutput:AVCaptureOutput!, didOutputSampleBuffer sampleBuffer:CMSampleBuffer!, from connection:AVCaptureConnection!) {
-        mixer.recorder.appendSampleBuffer(sampleBuffer, mediaType: AVMediaTypeVideo)
-        guard var buffer:CVImageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+//        mixer.recorder.appendSampleBuffer(sampleBuffer, mediaType: AVMediaTypeVideo)
+        guard let buffer:CVImageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return
         }
-        let image:CIImage = effect(buffer)
-        if (!effects.isEmpty) {
-            #if os(OSX)
-            // green edge hack for OSX
-            buffer = CVPixelBuffer.create(image)!
-            #endif
-            drawable?.render(image: image, to: buffer)
-        }
+//
+//        remove unused effects support to save CPU usage
+//
+//        let image:CIImage = effect(buffer)
+//        if (!effects.isEmpty) {
+//            #if os(OSX)
+//            // green edge hack for OSX
+//            buffer = CVPixelBuffer.create(image)!
+//            #endif
+//            drawable?.render(image: image, to: buffer)
+//        }
         encoder.encodeImageBuffer(
             buffer,
             presentationTimeStamp: sampleBuffer.presentationTimeStamp,
             duration: sampleBuffer.duration
         )
-        drawable?.draw(image: image)
+//
+//        drawable?.draw(image: image)
+//
     }
 }
 

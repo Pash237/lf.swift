@@ -16,7 +16,9 @@ final class AudioIOComponent: IOComponent {
                 mixer.session.removeInput(oldValue)
             }
             if let input:AVCaptureDeviceInput = input {
-                mixer.session.addInput(input)
+                if mixer.session.canAddInput(input) {
+                    mixer.session.addInput(input)
+                }
             }
         }
     }
@@ -46,24 +48,22 @@ final class AudioIOComponent: IOComponent {
         encoder.lockQueue = lockQueue
     }
 
-    func attach(audio:AVCaptureDevice?, automaticallyConfiguresApplicationAudioSession:Bool) {
-        output = nil
-        encoder.invalidate()
-        guard let audio:AVCaptureDevice = audio else {
-            input = nil
-            return
-        }
-        do {
-            input = try AVCaptureDeviceInput(device: audio)
-            #if os(iOS)
-            mixer.session.automaticallyConfiguresApplicationAudioSession = automaticallyConfiguresApplicationAudioSession
-            #endif
-            mixer.session.addOutput(output)
+    deinit {
+        removeCaptureSessionOutputDelegate()
+    }
+    
+    func addCaptureSessionOutputDelegate() {
+        if let output = mixer.session.audioOutput {
             output.setSampleBufferDelegate(self, queue: lockQueue)
-        } catch let error as NSError {
-            logger.error("\(error)")
         }
     }
+
+    func removeCaptureSessionOutputDelegate() {
+        if let output = mixer.session.audioOutput {
+            output.setSampleBufferDelegate(nil, queue: nil)
+        }
+    }
+
 }
 
 extension AudioIOComponent: AVCaptureAudioDataOutputSampleBufferDelegate {

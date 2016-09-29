@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import UIKit
 
 public final class DeviceUtil {
     private init() {
@@ -18,6 +19,21 @@ public final class DeviceUtil {
             return .landscapeLeft
         default:
             return nil
+        }
+    }
+
+    static public func videoOrientation(by orientation:UIInterfaceOrientation) -> AVCaptureVideoOrientation {
+        switch orientation {
+        case .portrait:
+            return .portrait
+        case .portraitUpsideDown:
+            return .portraitUpsideDown
+        case .landscapeLeft:
+            return .landscapeLeft
+        case .landscapeRight:
+            return .landscapeRight
+        default:
+            return .portrait
         }
     }
     #endif

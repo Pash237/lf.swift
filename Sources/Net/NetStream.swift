@@ -123,18 +123,14 @@ open class NetStream: NSObject {
         }
     }
 
-    open func attach(camera:AVCaptureDevice?) {
-        lockQueue.async {
-            self.mixer.videoIO.attach(camera: camera)
-            self.mixer.startRunning()
-        }
+    open func addOutputDelegates() {
+        self.mixer.videoIO.addCaptureSessionOutputDelegate()
+        self.mixer.audioIO.addCaptureSessionOutputDelegate()
     }
 
-    open func attach(audio:AVCaptureDevice?, automaticallyConfiguresApplicationAudioSession:Bool = true) {
-        lockQueue.async {
-            self.mixer.audioIO.attach(audio: audio, automaticallyConfiguresApplicationAudioSession: automaticallyConfiguresApplicationAudioSession
-            )
-        }
+    open func removeOutputDelegates() {
+        self.mixer.videoIO.removeCaptureSessionOutputDelegate()
+        self.mixer.audioIO.removeCaptureSessionOutputDelegate()
     }
 
     #if os(OSX)

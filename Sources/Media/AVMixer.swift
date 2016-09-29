@@ -67,15 +67,8 @@ final class AVMixer: NSObject {
         }
     }
 
-    fileprivate var _session:AVCaptureSession? = nil
     var session:AVCaptureSession! {
-        if (_session == nil) {
-            _session = AVCaptureSession()
-            _session?.beginConfiguration()
-            _session?.sessionPreset = AVMixer.defaultSessionPreset
-            _session?.commitConfiguration()
-        }
-        return _session!
+        return AVCaptureSession.shared
     }
 
     fileprivate(set) var audioIO:AudioIOComponent!
@@ -114,7 +107,6 @@ extension AVMixer: Runnable {
     }
 
     func startRunning() {
-        session.startRunning()
         #if os(iOS)
             if let orientation:AVCaptureVideoOrientation = DeviceUtil.videoOrientation(by: UIDevice.current.orientation) , syncOrientation {
             self.orientation = orientation
@@ -123,6 +115,6 @@ extension AVMixer: Runnable {
     }
 
     func stopRunning() {
-        session.stopRunning()
+        _sharedAVCaptureSession = nil
     }
 }
