@@ -263,10 +263,13 @@ open class RTMPStream: NetStream {
     fileprivate var howToPublish:RTMPStream.HowToPublish = .live
     fileprivate var rtmpConnection:RTMPConnection
     fileprivate var bitrateCheckTimer: Timer?
+    fileprivate var captureSession: AVCaptureSession
 
-    public init(connection: RTMPConnection) {
+    public init(connection: RTMPConnection, captureSession: AVCaptureSession) {
         self.rtmpConnection = connection
+        self.captureSession = captureSession
         super.init()
+        self.mixer.session = captureSession
         self.dispatcher = EventDispatcher(target: self)
         rtmpConnection.addEventListener(Event.RTMP_STATUS, selector: #selector(RTMPStream.on(status:)), observer: self)
         if (rtmpConnection.connected) {

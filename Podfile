@@ -2,7 +2,7 @@ source 'https://github.com/CocoaPods/Specs.git'
 use_frameworks!
 
 def import_pods
-    pod 'XCGLogger', :git => 'git@github.com:DaveWoodCom/XCGLogger.git', :commit => 'f7d6bea1924424157d70cb78b120cb576d5f99a8'
+    pod 'XCGLogger', :git => 'git@github.com:DaveWoodCom/XCGLogger.git', :commit => '636e042ce15a241ddeffc62f80839fadcc1bfa90'
 end
 
 target 'lf iOS'  do

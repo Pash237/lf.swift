@@ -67,9 +67,7 @@ final class AVMixer: NSObject {
         }
     }
 
-    var session:AVCaptureSession! {
-        return AVCaptureSession.shared
-    }
+    var session:AVCaptureSession!
 
     fileprivate(set) var audioIO:AudioIOComponent!
     fileprivate(set) var videoIO:VideoIOComponent!
