@@ -46,6 +46,10 @@ final class RTMPTSocket: NSObject, RTMPSocketCompatible {
         return 0
     }
 
+    var outputBitrate: Double {
+        return 0
+    }
+
     private var delay:UInt8 = 1
     private var index:Int64 = 0
     private var events:[Event] = []

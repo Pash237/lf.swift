@@ -11,6 +11,7 @@ protocol RTMPSocketCompatible: class {
     var securityLevel:StreamSocketSecurityLevel { get set }
     var objectEncoding:UInt8 { get set }
     var bytesInQueue: Int { get }
+    var outputBitrate: Double { get }
     weak var delegate:RTMPSocketDelegate? { get set }
 
     @discardableResult

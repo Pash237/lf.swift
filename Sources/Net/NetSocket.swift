@@ -25,6 +25,10 @@ class NetSocket: NSObject {
 
     var totalBytesInQueue: Int = 0
 
+    private(set) var outputBitrate: Double = 0
+    fileprivate var bytesOutInLastMeasurement: Int = 0
+    fileprivate var lastBitrateMeasurementTime: Double = 0
+
     @discardableResult
     final func doOutput(data:Data) -> Int {
         totalBytesInQueue += data.count
@@ -90,6 +94,16 @@ class NetSocket: NSObject {
         totalBytesInQueue -= maxLength
         if totalBytesInQueue < 0 {
             totalBytesInQueue = 0
+        }
+
+
+        bytesOutInLastMeasurement += maxLength
+
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - lastBitrateMeasurementTime > 1.0 {
+            outputBitrate = Double(bytesOutInLastMeasurement) / (now - lastBitrateMeasurementTime)
+            lastBitrateMeasurementTime = now
+            bytesOutInLastMeasurement = 0
         }
     }
 
