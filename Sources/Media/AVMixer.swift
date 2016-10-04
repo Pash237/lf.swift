@@ -113,6 +113,6 @@ extension AVMixer: Runnable {
     }
 
     func stopRunning() {
-        _sharedAVCaptureSession = nil
+
     }
 }

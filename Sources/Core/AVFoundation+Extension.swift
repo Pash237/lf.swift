@@ -22,19 +22,7 @@ extension AVCaptureDevice {
 	}
 }
 
-
-var _sharedAVCaptureSession: AVCaptureSession?
-
 extension AVCaptureSession {
-    class var shared: AVCaptureSession {
-        if _sharedAVCaptureSession == nil {
-            _sharedAVCaptureSession = AVCaptureSession()
-            _sharedAVCaptureSession?.sessionPreset = AVMixer.defaultSessionPreset
-        }
-        
-        return _sharedAVCaptureSession!
-    }
-    
     var audioOutput: AVCaptureAudioDataOutput?
     {
         for output in self.outputs {
