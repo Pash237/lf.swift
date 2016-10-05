@@ -672,6 +672,17 @@ extension RTMPStream {
                 newBitrate = Int(maximumBitrate)
             }
 
+            if newBitrate == minimumBitrate && bytesInQueue > 200 * 1024 {
+                logger.warning("Not enough bandwidth!")
+
+                self.dispatch(Event.RTMP_STATUS, bubbles: false, data: [
+                        "level": "status",
+                        "code": RTMPConnection.Code.connectNotEnoughBandwidth.rawValue,
+                        "description": ""
+                ])
+            }
+
+
             self.videoSettings["bitrate"] = newBitrate
 
             logger.debug("New video bitrate: \(newBitrate / 1024)")

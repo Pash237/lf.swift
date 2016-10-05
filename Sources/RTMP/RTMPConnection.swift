@@ -41,17 +41,18 @@ open class RTMPConnection: EventDispatcher {
      NetStatusEvent#info.code for NetConnection
      */
     public enum Code: String {
-        case callBadVersion       = "NetConnection.Call.BadVersion"
-        case callFailed           = "NetConnection.Call.Failed"
-        case callProhibited       = "NetConnection.Call.Prohibited"
-        case connectAppshutdown   = "NetConnection.Connect.AppShutdown"
-        case connectClosed        = "NetConnection.Connect.Closed"
-        case connectFailed        = "NetConnection.Connect.Failed"
-        case connectIdleTimeOut   = "NetConnection.Connect.IdleTimeOut"
-        case conenctInvalidApp    = "NetConnection.Connect.InvalidApp"
-        case connectNetworkChange = "NetConnection.Connect.NetworkChange"
-        case connectRejected      = "NetConnection.Connect.Rejected"
-        case connectSuccess       = "NetConnection.Connect.Success"
+        case callBadVersion            = "NetConnection.Call.BadVersion"
+        case callFailed                = "NetConnection.Call.Failed"
+        case callProhibited            = "NetConnection.Call.Prohibited"
+        case connectAppshutdown        = "NetConnection.Connect.AppShutdown"
+        case connectClosed             = "NetConnection.Connect.Closed"
+        case connectFailed             = "NetConnection.Connect.Failed"
+        case connectIdleTimeOut        = "NetConnection.Connect.IdleTimeOut"
+        case conenctInvalidApp         = "NetConnection.Connect.InvalidApp"
+        case connectNetworkChange      = "NetConnection.Connect.NetworkChange"
+        case connectRejected           = "NetConnection.Connect.Rejected"
+        case connectSuccess            = "NetConnection.Connect.Success"
+        case connectNotEnoughBandwidth = "NetConnection.Connect.NotEnoughBandwidth"
 
         public var level:String {
             switch self {
@@ -76,6 +77,8 @@ open class RTMPConnection: EventDispatcher {
             case .connectRejected:
                 return "status"
             case .connectSuccess:
+                return "status"
+            case .connectNotEnoughBandwidth:
                 return "status"
             }
         }

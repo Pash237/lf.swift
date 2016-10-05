@@ -55,6 +55,9 @@ open class Event: NSObject {
             }
             return result
         }
+        if let data = data as? [String: String] {
+            return data
+        }
         return nil
     }
 
