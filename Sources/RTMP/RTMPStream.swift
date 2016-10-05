@@ -567,6 +567,9 @@ extension RTMPStream: IEventDispatcher {
 
 fileprivate var totalVideoBytes: Int = 0
 fileprivate var totalAudioBytes: Int = 0
+fileprivate var inputBitrate: Double = 0
+fileprivate var bytesInLastMeasurement: Int = 0
+fileprivate var lastBitrateMeasurementTime: Double = 0
 
 extension RTMPStream: RTMPMuxerDelegate {
     // MARK: RTMPMuxerDelegate
@@ -582,6 +585,7 @@ extension RTMPStream: RTMPMuxerDelegate {
         ))
 
         totalAudioBytes += length
+        addInputBytes(length: length)
         
         chunkTypes[type] = true
         OSAtomicAdd64(Int64(length), &info.byteCount)
@@ -600,11 +604,24 @@ extension RTMPStream: RTMPMuxerDelegate {
         ))
 
         totalVideoBytes += length
+        addInputBytes(length: length)
 
         chunkTypes[type] = true
         OSAtomicAdd64(Int64(length), &info.byteCount)
         videoTimestamp = withTimestamp + (videoTimestamp - floor(videoTimestamp))
         frameCount += 1
+    }
+
+    func addInputBytes(length: Int)
+    {
+        bytesInLastMeasurement += length
+
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - lastBitrateMeasurementTime > 1.0 {
+            inputBitrate = Double(bytesInLastMeasurement) / (now - lastBitrateMeasurementTime)
+            lastBitrateMeasurementTime = now
+            bytesInLastMeasurement = 0
+        }
     }
 }
 
@@ -622,8 +639,10 @@ extension RTMPStream {
     }
 
     func adjustBitrate() {
-        print("In queue: \(rtmpConnection.socket.bytesInQueue / 1024) kb, totalBytesOut: \(rtmpConnection.socket.totalBytesOut / 1024) kb, " +
-                "totalVideoBytes: \(totalVideoBytes / 1024) kb, totalAudioBytes: \(totalAudioBytes / 1024) kb, bitrate: \(round(rtmpConnection.socket.outputBitrate / 1024)) kb/s")
+        print("In queue: \(rtmpConnection.socket.bytesInQueue / 1024) kb, " +
+                "totalVideoBytes: \(totalVideoBytes / 1024) kb, totalAudioBytes: \(totalAudioBytes / 1024) kb, " +
+                "input bitrate: \(round(inputBitrate / 1024)) kb/s, " +
+                "output bitrate: \(round(rtmpConnection.socket.outputBitrate / 1024)) kb/s")
 
         guard mixer.videoIO.encoder.adaptiveBitrate else {
             return
@@ -639,7 +658,7 @@ extension RTMPStream {
             if needToLowerBitrate {
                 change = -50 * 1024
             } else {
-                change = 100 * 1024
+                change = 50 * 1024
             }
 
             if bytesInQueue > 200 * 1024 {
