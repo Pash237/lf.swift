@@ -691,7 +691,9 @@ extension RTMPStream {
                 newBitrate = Int(maximumBitrate)
             }
 
-            if newBitrate == minimumBitrate && bytesInQueue > 200 * 1024 {
+            let outputBitrate = rtmpConnection.socket.outputBitrate
+
+            if newBitrate == minimumBitrate && ((bytesInQueue > 200 * 1024 && outputBitrate < 100 * 1024) || (bytesInQueue > 1000 * 1024)) {
                 logger.warning("Not enough bandwidth!")
 
                 self.dispatch(Event.RTMP_STATUS, bubbles: false, data: [
