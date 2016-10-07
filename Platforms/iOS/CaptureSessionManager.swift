@@ -8,6 +8,18 @@ import AVFoundation
 open class CaptureSessionManager: NSObject
 {
     open var session: AVCaptureSession
+
+    open var autorotate: Bool = true
+    open var orientation: AVCaptureVideoOrientation = .portrait
+    {
+        didSet {
+            if let connection = session.videoOutput?.connection(withMediaType: AVMediaTypeVideo) {
+                if (connection.isVideoOrientationSupported && connection.videoOrientation != orientation) {
+                    connection.videoOrientation = orientation
+                }
+            }
+        }
+    }
     
     public init(sessionPreset: String = AVCaptureSessionPresetMedium)
     {
@@ -17,8 +29,13 @@ open class CaptureSessionManager: NSObject
         super.init()
 
         setupCaptureSession()
+
+        NotificationCenter.default.addObserver(self, selector: #selector(onOrientationChanged(_:)), name: NSNotification.Name.UIDeviceOrientationDidChange, object: nil)
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 
     func setupCaptureSession()
     {
@@ -30,11 +47,7 @@ open class CaptureSessionManager: NSObject
             videoOutput.alwaysDiscardsLateVideoFrames = true
             session.addOutput(videoOutput)
 
-            if let connection = videoOutput.connection(withMediaType: AVMediaTypeVideo) {
-                if (connection.isVideoOrientationSupported) {
-                    connection.videoOrientation = DeviceUtil.videoOrientation(by: UIApplication.shared.statusBarOrientation)
-                }
-            }
+            orientation = DeviceUtil.videoOrientation(by: UIApplication.shared.statusBarOrientation)
         }
 
         do {
@@ -63,6 +76,18 @@ extension CaptureSessionManager: Runnable
     
     open func stopRunning()
     {
-        session.startRunning()
+        session.stopRunning()
+    }
+}
+
+extension CaptureSessionManager
+{
+    func onOrientationChanged(_ notification:Notification)
+    {
+        guard autorotate else {
+            return
+        }
+
+        orientation = DeviceUtil.videoOrientation(by: UIApplication.shared.statusBarOrientation)
     }
 }

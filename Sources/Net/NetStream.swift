@@ -31,23 +31,6 @@ open class NetStream: NSObject {
         }
     }
 
-    #if os(iOS)
-    open var syncOrientation:Bool {
-        get {
-            var syncOrientation:Bool = false
-            lockQueue.sync {
-                syncOrientation = self.mixer.syncOrientation
-            }
-            return syncOrientation
-        }
-        set {
-            lockQueue.async {
-                self.mixer.syncOrientation = newValue
-            }
-        }
-    }
-    #endif
-
     open var audioSettings:[String:Any] {
         get {
             var audioSettings:[String:Any]!

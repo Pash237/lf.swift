@@ -49,23 +49,6 @@ final class VideoIOComponent: IOComponent {
         }
     }
 
-    var orientation:AVCaptureVideoOrientation = .portrait {
-        didSet {
-            guard orientation != oldValue, let output = output
-                else {
-                    return
-                }
-            drawable?.orientation = orientation
-            for connection in output.connections {
-                if let connection:AVCaptureConnection = connection as? AVCaptureConnection {
-                    if (connection.isVideoOrientationSupported) {
-                        connection.videoOrientation = orientation
-                    }
-                }
-            }
-        }
-    }
-
     var torch:Bool = false {
         didSet {
             guard torch != oldValue else {

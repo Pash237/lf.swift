@@ -25,11 +25,6 @@ final class AVMixer: NSObject {
         set { videoIO.fps = newValue }
     }
 
-    var orientation:AVCaptureVideoOrientation {
-        get { return videoIO.orientation }
-        set { videoIO.orientation = newValue }
-    }
-
     var continuousExposure:Bool {
         get { return videoIO.continuousExposure }
         set { videoIO.continuousExposure = newValue }
@@ -39,22 +34,6 @@ final class AVMixer: NSObject {
         get { return videoIO.continuousAutofocus }
         set { videoIO.continuousAutofocus = newValue }
     }
-
-    #if os(iOS)
-    var syncOrientation:Bool = false {
-        didSet {
-            guard syncOrientation != oldValue else {
-                return
-            }
-            let center:NotificationCenter = NotificationCenter.default
-            if (syncOrientation) {
-                center.addObserver(self, selector: #selector(AVMixer.onOrientationChanged(_:)), name: NSNotification.Name.UIDeviceOrientationDidChange, object: nil)
-            } else {
-                center.removeObserver(self, name: NSNotification.Name.UIDeviceOrientationDidChange, object: nil)
-            }
-        }
-    }
-    #endif
 
     var sessionPreset:String = AVMixer.defaultSessionPreset {
         didSet {
@@ -78,24 +57,6 @@ final class AVMixer: NSObject {
         audioIO = AudioIOComponent(mixer: self)
         videoIO = VideoIOComponent(mixer: self)
     }
-
-    deinit {
-        #if os(iOS)
-        syncOrientation = false
-        #endif
-    }
-
-    #if os(iOS)
-    func onOrientationChanged(_ notification:Notification) {
-        var deviceOrientation:UIDeviceOrientation = .unknown
-        if let device:UIDevice = notification.object as? UIDevice {
-            deviceOrientation = device.orientation
-        }
-        if let orientation:AVCaptureVideoOrientation = DeviceUtil.videoOrientation(by: deviceOrientation) {
-            self.orientation = orientation
-        }
-    }
-    #endif
 }
 
 extension AVMixer: Runnable {
@@ -105,11 +66,6 @@ extension AVMixer: Runnable {
     }
 
     func startRunning() {
-        #if os(iOS)
-            if let orientation:AVCaptureVideoOrientation = DeviceUtil.videoOrientation(by: UIDevice.current.orientation) , syncOrientation {
-            self.orientation = orientation
-        }
-        #endif
     }
 
     func stopRunning() {
