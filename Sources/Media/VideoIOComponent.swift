@@ -154,23 +154,12 @@ final class VideoIOComponent: IOComponent {
         }
     }
 
-    fileprivate var _output:AVCaptureVideoDataOutput? = nil
     var output:AVCaptureVideoDataOutput? {
         return mixer.session.videoOutput
     }
 
-    fileprivate(set) var input:AVCaptureInput? = nil {
-        didSet {
-            guard oldValue != input else {
-                return
-            }
-            if let oldValue:AVCaptureInput = oldValue {
-                mixer.session.removeInput(oldValue)
-            }
-            if let input:AVCaptureInput = input {
-                mixer.session.addInput(input)
-            }
-        }
+    fileprivate var input:AVCaptureInput? {
+        return mixer.session.videoInput
     }
 
     #if !os(OSX)
@@ -233,7 +222,7 @@ final class VideoIOComponent: IOComponent {
             self.screen = nil
             return
         }
-        input = nil
+
         if (useScreenSize) {
             encoder.setValuesForKeys([
                 "width": screen.attributes["Width"]!,
