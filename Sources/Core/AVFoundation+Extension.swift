@@ -58,7 +58,8 @@ extension AVCaptureSession {
 		for input in self.inputs {
 			if input is AVCaptureDeviceInput {
 				if (input as! AVCaptureDeviceInput).device.hasMediaType(mediaType) {
-					return input as? 
+					return input as? AVCaptureDeviceInput
+				}
 			}
 		}
 		return nil
