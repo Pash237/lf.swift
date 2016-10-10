@@ -9,6 +9,8 @@ open class CaptureSessionManager: NSObject
 {
     open var session: AVCaptureSession
 
+    fileprivate var sessionPreset = AVCaptureSessionPresetMedium
+
     open var autorotate: Bool = true
     open var orientation: AVCaptureVideoOrientation = .portrait
     {
@@ -27,6 +29,8 @@ open class CaptureSessionManager: NSObject
         session.sessionPreset = sessionPreset
 
         super.init()
+
+        self.sessionPreset = sessionPreset
 
         setupCaptureSession()
 
@@ -58,6 +62,36 @@ open class CaptureSessionManager: NSObject
             session.addOutput(audioOutput)
 
             session.automaticallyConfiguresApplicationAudioSession = true
+        }
+    }
+
+    open var cameraPosition: AVCaptureDevicePosition = .back {
+        didSet {
+            if session.videoInput?.device.position != cameraPosition {
+                session.removeInput(session.videoInput)
+
+                if let videoInput = AVCaptureDevice.cameraWithPosition(position: cameraPosition) {
+                    var fallbackSessionPreset = sessionPreset
+                    if fallbackSessionPreset != AVCaptureSessionPreset1920x1080 && !videoInput.supportsAVCaptureSessionPreset(fallbackSessionPreset) {
+                        fallbackSessionPreset = AVCaptureSessionPreset1920x1080
+                    }
+                    if fallbackSessionPreset != AVCaptureSessionPreset1280x720 && !videoInput.supportsAVCaptureSessionPreset(fallbackSessionPreset) {
+                        fallbackSessionPreset = AVCaptureSessionPreset1280x720
+                    }
+                    if fallbackSessionPreset != AVCaptureSessionPreset640x480 && !videoInput.supportsAVCaptureSessionPreset(fallbackSessionPreset) {
+                        fallbackSessionPreset = AVCaptureSessionPreset640x480
+                    }
+
+                    if session.sessionPreset != fallbackSessionPreset {
+                        session.sessionPreset = fallbackSessionPreset;
+                        logger.debug("Setting session preset \(fallbackSessionPreset)")
+                    }
+
+                    try! session.addInput(AVCaptureDeviceInput(device: videoInput))
+
+                    orientation = DeviceUtil.videoOrientation(by: UIApplication.shared.statusBarOrientation)
+                }
+            }
         }
     }
 }

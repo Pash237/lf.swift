@@ -42,6 +42,28 @@ extension AVCaptureSession {
         }
         return nil
     }
+
+	var audioInput: AVCaptureDeviceInput?
+	{
+		return input(mediaType: AVMediaTypeAudio)
+	}
+
+	var videoInput: AVCaptureDeviceInput?
+	{
+		return input(mediaType: AVMediaTypeVideo)
+	}
+
+	func input(mediaType: String) -> AVCaptureDeviceInput?
+	{
+		for input in self.inputs {
+			if input is AVCaptureDeviceInput {
+				if (input as! AVCaptureDeviceInput).device.hasMediaType(mediaType) {
+					return input as? AVCaptureDeviceInput
+				}
+			}
+		}
+		return nil
+	}
     
     func cleanup()
     {
