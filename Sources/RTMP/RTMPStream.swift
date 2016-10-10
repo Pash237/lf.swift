@@ -265,6 +265,12 @@ open class RTMPStream: NetStream {
     fileprivate var bitrateCheckTimer: Timer?
     fileprivate var captureSession: AVCaptureSession
 
+    open var audioCallback: ((_ audioBuffer: AudioBuffer) -> ())? {
+        didSet {
+            mixer.audioIO.encoder.audioCallback = audioCallback
+        }
+    }
+
     public init(connection: RTMPConnection, captureSession: AVCaptureSession) {
         self.rtmpConnection = connection
         self.captureSession = captureSession
@@ -432,6 +438,7 @@ open class RTMPStream: NetStream {
             #endif
             self.mixer.audioIO.encoder.delegate = self.muxer
             self.mixer.videoIO.encoder.delegate = self.muxer
+            self.mixer.audioIO.encoder.audioCallback = self.audioCallback
             self.mixer.startRunning()
             self.chunkTypes.removeAll()
             self.FCPublish()
@@ -450,6 +457,13 @@ open class RTMPStream: NetStream {
 
             self.readyState = .publish
         }
+    }
+
+    open func startAudioInputMonitoring()
+    {
+        mixer.audioIO.encoder.audioCallback = self.audioCallback
+        mixer.audioIO.addCaptureSessionOutputDelegate()
+        mixer.audioIO.encoder.startRunning()
     }
 
     open func close() {
@@ -492,14 +506,14 @@ open class RTMPStream: NetStream {
 
     open func createMetaData() -> ASObject {
         var metadata:ASObject = [:]
-        if let _:AVCaptureInput = mixer.videoIO.input {
+        do {
             metadata["width"] = mixer.videoIO.encoder.width
             metadata["height"] = mixer.videoIO.encoder.height
             metadata["framerate"] = mixer.videoIO.fps
             metadata["videocodecid"] = FLVVideoCodec.avc.rawValue
             metadata["videodatarate"] = mixer.videoIO.encoder.bitrate
         }
-        if let _:AVCaptureInput = mixer.audioIO.input {
+        do {
             metadata["audiocodecid"] = FLVAudioCodec.aac.rawValue
             metadata["audiodatarate"] = mixer.audioIO.encoder.bitrate
         }

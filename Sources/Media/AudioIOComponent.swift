@@ -7,42 +7,6 @@ final class AudioIOComponent: IOComponent {
         label: "com.github.shogo4405.lf.AudioIOComponent.lock", attributes: []
     )
 
-    var input:AVCaptureDeviceInput? = nil {
-        didSet {
-            guard oldValue != input else {
-                return
-            }
-            if let oldValue:AVCaptureDeviceInput = oldValue {
-                mixer.session.removeInput(oldValue)
-            }
-            if let input:AVCaptureDeviceInput = input {
-                if mixer.session.canAddInput(input) {
-                    mixer.session.addInput(input)
-                }
-            }
-        }
-    }
-
-    private var _output:AVCaptureAudioDataOutput? = nil
-    var output:AVCaptureAudioDataOutput! {
-        get {
-            if (_output == nil) {
-                _output = AVCaptureAudioDataOutput()
-            }
-            return _output
-        }
-        set {
-            if (_output == newValue) {
-                return
-            }
-            if let output:AVCaptureAudioDataOutput = _output {
-                output.setSampleBufferDelegate(nil, queue: nil)
-                mixer.session.removeOutput(output)
-            }
-            _output = newValue
-        }
-    }
-
     override init(mixer: AVMixer) {
         super.init(mixer: mixer)
         encoder.lockQueue = lockQueue

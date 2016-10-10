@@ -44,6 +44,8 @@ final class AACEncoder: NSObject {
 
     var muted:Bool = false
 
+    var audioCallback: ((_ audioBuffer: AudioBuffer) -> ())?
+
     var bitrate:UInt32 = AACEncoder.defaultBitrate {
         didSet {
             lockQueue.async {
@@ -186,36 +188,40 @@ final class AACEncoder: NSObject {
             }
         }
 
-        var ioOutputDataPacketSize:UInt32 = 1
-        let dataLength:Int = CMBlockBufferGetDataLength(blockBuffer!)
-        let outOutputData:UnsafeMutableAudioBufferListPointer = AudioBufferList.allocate(maximumBuffers: 1)
-        outOutputData[0].mNumberChannels = inDestinationFormat.mChannelsPerFrame
-        outOutputData[0].mDataByteSize = UInt32(dataLength)
-        outOutputData[0].mData = malloc(dataLength)
+        audioCallback?(currentBufferList![0])
 
-        let status:OSStatus = AudioConverterFillComplexBuffer(
-            converter,
-            inputDataProc,
-            unsafeBitCast(self, to: UnsafeMutableRawPointer.self),
-            &ioOutputDataPacketSize,
-            outOutputData.unsafeMutablePointer,
-            nil
-        )
+        if delegate != nil {
+            var ioOutputDataPacketSize:UInt32 = 1
+            let dataLength:Int = CMBlockBufferGetDataLength(blockBuffer!)
+            let outOutputData:UnsafeMutableAudioBufferListPointer = AudioBufferList.allocate(maximumBuffers: 1)
+            outOutputData[0].mNumberChannels = inDestinationFormat.mChannelsPerFrame
+            outOutputData[0].mDataByteSize = UInt32(dataLength)
+            outOutputData[0].mData = malloc(dataLength)
 
-        // XXX: perhaps mistake. but can support macOS BuiltIn Mic #61
-        if (0 <= status && ioOutputDataPacketSize == 1) {
-            var result:CMSampleBuffer?
-            var timing:CMSampleTimingInfo = CMSampleTimingInfo(sampleBuffer: sampleBuffer)
-            let numSamples:CMItemCount = sampleBuffer.numSamples
-            CMSampleBufferCreate(kCFAllocatorDefault, nil, false, nil, nil, formatDescription, numSamples, 1, &timing, 0, nil, &result)
-            CMSampleBufferSetDataBufferFromAudioBufferList(result!, kCFAllocatorDefault, kCFAllocatorDefault, 0, outOutputData.unsafePointer)
-            delegate?.sampleOutput(audio: result!)
+            let status:OSStatus = AudioConverterFillComplexBuffer(
+                converter,
+                inputDataProc,
+                unsafeBitCast(self, to: UnsafeMutableRawPointer.self),
+                &ioOutputDataPacketSize,
+                outOutputData.unsafeMutablePointer,
+                nil
+            )
+
+            // XXX: perhaps mistake. but can support macOS BuiltIn Mic #61
+            if (0 <= status && ioOutputDataPacketSize == 1) {
+                var result:CMSampleBuffer?
+                var timing:CMSampleTimingInfo = CMSampleTimingInfo(sampleBuffer: sampleBuffer)
+                let numSamples:CMItemCount = sampleBuffer.numSamples
+                CMSampleBufferCreate(kCFAllocatorDefault, nil, false, nil, nil, formatDescription, numSamples, 1, &timing, 0, nil, &result)
+                CMSampleBufferSetDataBufferFromAudioBufferList(result!, kCFAllocatorDefault, kCFAllocatorDefault, 0, outOutputData.unsafePointer)
+                delegate?.sampleOutput(audio: result!)
+            }
+
+            for i in 0..<outOutputData.count {
+                free(outOutputData[i].mData)
+            }
+            free(outOutputData.unsafeMutablePointer)
         }
-
-        for i in 0..<outOutputData.count {
-            free(outOutputData[i].mData)
-        }
-        free(outOutputData.unsafeMutablePointer)
     }
 
     func invalidate() {
