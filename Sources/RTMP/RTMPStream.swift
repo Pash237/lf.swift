@@ -427,6 +427,12 @@ open class RTMPStream: NetStream {
             }
 
             logger.debug("Start publishing \(name)")
+            
+            if self.mixer.audioIO.encoder.running {
+                //recreate audio encoder after input monitoring
+                self.mixer.audioIO.encoder.invalidate()
+                self.mixer.audioIO.encoder = AACEncoder()
+            }
 
             self.info.resourceName = name
             self.howToPublish = type
