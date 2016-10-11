@@ -659,10 +659,11 @@ extension RTMPStream {
     }
 
     func adjustBitrate() {
-        print("In queue: \(rtmpConnection.socket.bytesInQueue / 1024) kb, " +
+        let statusString = "In queue: \(rtmpConnection.socket.bytesInQueue / 1024) kb, " +
                 "totalVideoBytes: \(totalVideoBytes / 1024) kb, totalAudioBytes: \(totalAudioBytes / 1024) kb, " +
                 "input bitrate: \(round(inputBitrate / 1024)) kb/s, " +
-                "output bitrate: \(round(rtmpConnection.socket.outputBitrate / 1024)) kb/s")
+                "output bitrate: \(round(rtmpConnection.socket.outputBitrate / 1024)) kb/s"
+        print(statusString)
 
         guard mixer.videoIO.encoder.adaptiveBitrate else {
             return
@@ -719,14 +720,22 @@ extension RTMPStream {
                 self.dispatch(Event.RTMP_STATUS, bubbles: false, data: [
                         "level": "status",
                         "code": RTMPConnection.Code.connectNotEnoughBandwidth.rawValue,
-                        "description": ""
+                        "description": statusString
                 ])
             }
 
 
-            self.videoSettings["bitrate"] = newBitrate
+            if self.videoSettings["bitrate"] as! Int != newBitrate {
+                self.videoSettings["bitrate"] = newBitrate
 
-            logger.debug("New video bitrate: \(newBitrate / 1024)")
+                logger.debug("New video bitrate: \(newBitrate / 1024)")
+
+                self.dispatch(Event.RTMP_STATUS, bubbles: false, data: [
+                        "level": "status",
+                        "code": RTMPConnection.Code.bitrateChanged.rawValue,
+                        "description": "New video bitrate: \(newBitrate / 1024), \(statusString)"
+                ])
+            }
         }
     }
 }

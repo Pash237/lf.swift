@@ -53,6 +53,7 @@ open class RTMPConnection: EventDispatcher {
         case connectRejected           = "NetConnection.Connect.Rejected"
         case connectSuccess            = "NetConnection.Connect.Success"
         case connectNotEnoughBandwidth = "NetConnection.Connect.NotEnoughBandwidth"
+        case bitrateChanged            = "NetConnection.Connect.BitrateChanged"
 
         public var level:String {
             switch self {
@@ -79,6 +80,8 @@ open class RTMPConnection: EventDispatcher {
             case .connectSuccess:
                 return "status"
             case .connectNotEnoughBandwidth:
+                return "status"
+            case .bitrateChanged:
                 return "status"
             }
         }
