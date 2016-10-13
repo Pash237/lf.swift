@@ -28,6 +28,7 @@ class NetSocket: NSObject {
     private(set) var outputBitrate: Double = 0
     fileprivate var bytesOutInLastMeasurement: Int = 0
     fileprivate var lastBitrateMeasurementTime: Double = 0
+    fileprivate var bitrateMeasureTimer: Timer?
 
     @discardableResult
     final func doOutput(data:Data) -> Int {
@@ -98,13 +99,16 @@ class NetSocket: NSObject {
 
 
         bytesOutInLastMeasurement += maxLength
-
+    }
+    
+    @objc func measureBitrate()
+    {
         let now = CFAbsoluteTimeGetCurrent()
-        if now - lastBitrateMeasurementTime > 1.0 {
-            outputBitrate = Double(bytesOutInLastMeasurement) / (now - lastBitrateMeasurementTime)
-            lastBitrateMeasurementTime = now
-            bytesOutInLastMeasurement = 0
-        }
+        
+        outputBitrate = Double(bytesOutInLastMeasurement) / (now - lastBitrateMeasurementTime)
+
+        lastBitrateMeasurementTime = now
+        bytesOutInLastMeasurement = 0
     }
 
     func close(isDisconnected:Bool) {
@@ -144,6 +148,9 @@ class NetSocket: NSObject {
 
         inputStream.open()
         outputStream.open()
+        
+        bitrateMeasureTimer?.invalidate()
+        bitrateMeasureTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(measureBitrate), userInfo: nil, repeats: true)
 
         if (0 < timeout) {
             lockQueue.asyncAfter(deadline: DispatchTime.now() + Double(timeout * Int64(NSEC_PER_SEC)) / Double(NSEC_PER_SEC)) {
@@ -167,6 +174,9 @@ class NetSocket: NSObject {
         outputStream?.remove(from: runloop!, forMode: .defaultRunLoopMode)
         outputStream?.delegate = nil
         outputStream = nil
+        
+        bitrateMeasureTimer?.invalidate()
+        bitrateMeasureTimer = nil
     }
 
     func didTimeout() {
@@ -201,6 +211,7 @@ extension NetSocket: StreamDelegate {
                 timeoutHandler = nil
                 connected = true
             }
+            print("Stream connected")
         //  2 = 1 << 1
         case Stream.Event.hasBytesAvailable:
             if (aStream == inputStream) {
@@ -212,9 +223,11 @@ extension NetSocket: StreamDelegate {
         //  8 = 1 << 3
         case Stream.Event.errorOccurred:
             close(isDisconnected: true)
+            print("Stream error occurred")
         // 16 = 1 << 4
         case Stream.Event.endEncountered:
             close(isDisconnected: true)
+            print("Stream end")
         default:
             break
         }
