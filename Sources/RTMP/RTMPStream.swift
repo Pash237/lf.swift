@@ -701,7 +701,7 @@ extension RTMPStream {
 
             var newBitrate = Int(mixer.videoIO.encoder.bitrate)
 
-            let minimumBitrate = 1
+            let minimumBitrate = 16 * 1024
             let maximumBitrate = mixer.videoIO.encoder.maximumBitrate
 
             newBitrate += change
