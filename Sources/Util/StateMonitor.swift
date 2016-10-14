@@ -6,6 +6,7 @@ import Foundation
 
 extension Notification.Name {
     static let onPublishingBroken = Notification.Name("onPublishingBroken")
+	static let onPublishingStatusChanged = Notification.Name("onPublishingStatusChanged")
 }
 
 open class StateMonitor: NSObject
@@ -42,6 +43,7 @@ open class StateMonitor: NSObject
         totalAudioBytes = 0
         totalVideoBytes = 0
         totalBytesInQueue = 0
+		videoBitrate = 0
         notEnoughBandwidth = false
         
         timer = Timer.scheduledTimer(timeInterval: interval, target: self, selector: #selector(self.timerFires), userInfo: nil, repeats: true)
@@ -70,13 +72,33 @@ open class StateMonitor: NSObject
     open private(set) var videoInputActive: Bool = true
     open private(set) var socketOutputActive: Bool = true
 
-	open var statusString: String
+	open var debugStatusText: String
 	{
 		return "session – audio: \(audioCaptureSessionOutputActive), video: \(videoCaptureSessionOutputActive), " +
 				"encoder – audio: \(audioEncoderActive), video: \(videoEncoderActive), " +
 				"totalBytes – audio: \(totalAudioBytes) (\(audioInputActive)), video: \(totalVideoBytes) (\(videoInputActive)), " +
 				"outputBitrate: \(Int(socketOutputBitrate / 1000)) KBit, in queue: \(totalBytesInQueue / 1024) KB"
 	}
+
+	open var statusText: String?
+	{
+		if somethingIsWrongWithNetwork {
+			if notEnoughBandwidth {
+				return "Not enough bandwidth."
+			} else {
+				return "Connecting…"
+			}
+		}
+		if somethingIsWrongWithAudioVideoInput {
+			return "Connecting…"
+		}
+		if videoBitrate != 0 && videoBitrate < 100*1000 {
+			return "Slow connection."
+		}
+		return nil
+	}
+
+	fileprivate var previousStatusText: String?
     
     open var somethingIsWrongWithAudioVideoInput: Bool
     {
@@ -93,7 +115,21 @@ open class StateMonitor: NSObject
     
     @objc func timerFires()
     {
-        if let pauseUntil = pauseUntil {
+	    audioCaptureSessionOutputActive = CFAbsoluteTimeGetCurrent() - audioCaptureSessionOutputActiveTime < interval*2
+	    videoCaptureSessionOutputActive = CFAbsoluteTimeGetCurrent() - videoCaptureSessionOutputActiveTime < interval*2
+	    audioEncoderActive = CFAbsoluteTimeGetCurrent() - audioEncoderActiveTime < interval*2
+	    videoEncoderActive = CFAbsoluteTimeGetCurrent() - videoEncoderActiveTime < interval*2
+	    audioInputActive = totalAudioBytes != previousPreviousTotalAudioBytes
+	    videoInputActive = totalVideoBytes != previousPreviousTotalVideoBytes
+	    socketOutputActive = !(socketOutputBitrate == 0 && previousSocketOutputBitrate == 0 && previousPreviousSocketOutputBitrate == 0)
+
+	    let statusText = self.statusText
+	    if previousStatusText != statusText {
+		    NotificationCenter.default.post(name: .onPublishingStatusChanged, object: self)
+	    }
+	    previousStatusText = statusText
+
+	    if let pauseUntil = pauseUntil {
             if CFAbsoluteTimeGetCurrent() < pauseUntil {
 	            print("...waiting more \(pauseUntil - CFAbsoluteTimeGetCurrent()) seconds")
                 return
@@ -102,16 +138,8 @@ open class StateMonitor: NSObject
                 self.pauseUntil = nil
             }
         }
-        
-        audioCaptureSessionOutputActive = CFAbsoluteTimeGetCurrent() - audioCaptureSessionOutputActiveTime < interval*2
-        videoCaptureSessionOutputActive = CFAbsoluteTimeGetCurrent() - videoCaptureSessionOutputActiveTime < interval*2
-        audioEncoderActive = CFAbsoluteTimeGetCurrent() - audioEncoderActiveTime < interval*2
-        videoEncoderActive = CFAbsoluteTimeGetCurrent() - videoEncoderActiveTime < interval*2
-        audioInputActive = totalAudioBytes != previousPreviousTotalAudioBytes
-        videoInputActive = totalVideoBytes != previousPreviousTotalVideoBytes
-        socketOutputActive = !(socketOutputBitrate == 0 && previousSocketOutputBitrate == 0 && previousPreviousSocketOutputBitrate == 0)
-        
-        print("STATUS: \(statusString)")
+
+        print("STATUS: \(debugStatusText)")
 
 	    if somethingIsWrongWithNetwork || somethingIsWrongWithAudioVideoInput
 	    {
@@ -151,6 +179,7 @@ open class StateMonitor: NSObject
 
 	var socketOutputBitrate: Double = 0
 	var totalBytesInQueue: Int = 0
+	var videoBitrate: Int = 0
 
 	fileprivate var previousTotalAudioBytes: Int = -1
 	fileprivate var previousTotalVideoBytes: Int = -1

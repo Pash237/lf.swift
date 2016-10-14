@@ -735,6 +735,8 @@ extension RTMPStream {
             if self.videoSettings["bitrate"] as! Int != newBitrate {
                 self.videoSettings["bitrate"] = newBitrate
 
+                StateMonitor.shared.videoBitrate = newBitrate
+
                 logger.debug("New video bitrate: \(newBitrate / 1024)")
 
                 self.dispatch(Event.RTMP_STATUS, bubbles: false, data: [
