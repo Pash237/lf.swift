@@ -285,29 +285,17 @@ final class VideoIOComponent: IOComponent {
 extension VideoIOComponent: AVCaptureVideoDataOutputSampleBufferDelegate {
     // MARK: AVCaptureVideoDataOutputSampleBufferDelegate
     func captureOutput(_ captureOutput:AVCaptureOutput!, didOutputSampleBuffer sampleBuffer:CMSampleBuffer!, from connection:AVCaptureConnection!) {
-//        mixer.recorder.appendSampleBuffer(sampleBuffer, mediaType: AVMediaTypeVideo)
         guard let buffer:CVImageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return
         }
-//
-//        remove unused effects support to save CPU usage
-//
-//        let image:CIImage = effect(buffer)
-//        if (!effects.isEmpty) {
-//            #if os(OSX)
-//            // green edge hack for OSX
-//            buffer = CVPixelBuffer.create(image)!
-//            #endif
-//            drawable?.render(image: image, to: buffer)
-//        }
+
+        StateMonitor.shared.setVideoCaptureSessionOutputActive()
+
         encoder.encodeImageBuffer(
             buffer,
             presentationTimeStamp: sampleBuffer.presentationTimeStamp,
             duration: sampleBuffer.duration
         )
-//
-//        drawable?.draw(image: image)
-//
     }
 }
 

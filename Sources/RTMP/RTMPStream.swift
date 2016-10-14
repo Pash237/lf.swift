@@ -605,6 +605,7 @@ extension RTMPStream: RTMPMuxerDelegate {
         ))
 
         totalAudioBytes += length
+        StateMonitor.shared.totalAudioBytes += length
         addInputBytes(length: length)
         
         chunkTypes[type] = true
@@ -624,6 +625,7 @@ extension RTMPStream: RTMPMuxerDelegate {
         ))
 
         totalVideoBytes += length
+        StateMonitor.shared.totalVideoBytes += length
         addInputBytes(length: length)
 
         chunkTypes[type] = true
@@ -663,7 +665,6 @@ extension RTMPStream {
                 "totalVideoBytes: \(totalVideoBytes / 1024) kb, totalAudioBytes: \(totalAudioBytes / 1024) kb, " +
                 "input bitrate: \(round(inputBitrate / 1024)) kb/s, " +
                 "output bitrate: \(round(rtmpConnection.socket.outputBitrate / 1024)) kb/s"
-        print(statusString)
 
         guard mixer.videoIO.encoder.adaptiveBitrate else {
             return
@@ -717,11 +718,17 @@ extension RTMPStream {
             if newBitrate == minimumBitrate && ((bytesInQueue > 200 * 1024 && outputBitrate < 100 * 1024) || (bytesInQueue > 1000 * 1024)) {
                 logger.warning("Not enough bandwidth!")
 
-                self.dispatch(Event.RTMP_STATUS, bubbles: false, data: [
-                        "level": "status",
-                        "code": RTMPConnection.Code.connectNotEnoughBandwidth.rawValue,
-                        "description": statusString
-                ])
+                if !StateMonitor.shared.notEnoughBandwidth {
+                    self.dispatch(Event.RTMP_STATUS, bubbles: false, data: [
+                            "level": "status",
+                            "code": RTMPConnection.Code.connectNotEnoughBandwidth.rawValue,
+                            "description": statusString
+                    ])
+                }
+
+                StateMonitor.shared.notEnoughBandwidth = true
+            } else {
+                StateMonitor.shared.notEnoughBandwidth = false
             }
 
 

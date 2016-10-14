@@ -52,6 +52,8 @@ extension RTMPMuxer: AudioEncoderDelegate {
         }
         delegate?.sampleOutput(audio: buffer, withTimestamp: delta, muxer: self)
         audioTimestamp = presentationTimeStamp
+
+        StateMonitor.shared.setAudioEncoderActive()
     }
 }
 
@@ -96,6 +98,8 @@ extension RTMPMuxer: VideoEncoderDelegate {
         }
         delegate?.sampleOutput(video: buffer, withTimestamp: delta, muxer: self)
         videoTimestamp = decodeTimeStamp
+
+        StateMonitor.shared.setVideoEncoderActive()
     }
 }
 

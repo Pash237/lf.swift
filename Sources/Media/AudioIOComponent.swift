@@ -33,6 +33,7 @@ final class AudioIOComponent: IOComponent {
 extension AudioIOComponent: AVCaptureAudioDataOutputSampleBufferDelegate {
     // MARK: AVCaptureAudioDataOutputSampleBufferDelegate
     func captureOutput(_ captureOutput:AVCaptureOutput!, didOutputSampleBuffer sampleBuffer:CMSampleBuffer!, from connection:AVCaptureConnection!) {
+        StateMonitor.shared.setAudioCaptureSessionOutputActive()
         encoder.captureOutput(captureOutput, didOutputSampleBuffer: sampleBuffer, from: connection)
     }
 }

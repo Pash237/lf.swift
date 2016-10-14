@@ -106,9 +106,12 @@ class NetSocket: NSObject {
         let now = CFAbsoluteTimeGetCurrent()
         
         outputBitrate = Double(bytesOutInLastMeasurement) / (now - lastBitrateMeasurementTime)
+        StateMonitor.shared.socketOutputBitrate = outputBitrate
 
         lastBitrateMeasurementTime = now
         bytesOutInLastMeasurement = 0
+
+        StateMonitor.shared.totalBytesInQueue = totalBytesInQueue
     }
 
     func close(isDisconnected:Bool) {
