@@ -81,6 +81,7 @@ open class LFView: UIView {
                 }
             }
         }
+        previewLayer.videoGravity = videoGravity
     }
     
 }
