@@ -40,12 +40,16 @@ open class CaptureSessionManager: NSObject
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
-
+    
     func setupCaptureSession()
     {
         do {
-            let videoInput = AVCaptureDevice.cameraWithPosition(position: .back)
-            try! session.addInput(AVCaptureDeviceInput(device: videoInput))
+            let inputDevice = AVCaptureDevice.cameraWithPosition(position: .back)
+            if let input = try? AVCaptureDeviceInput(device: inputDevice) {
+                if session.canAddInput(input) {
+                    session.addInput(input)
+                }
+            }
 
             let videoOutput = AVCaptureVideoDataOutput()
             videoOutput.alwaysDiscardsLateVideoFrames = true
@@ -55,14 +59,22 @@ open class CaptureSessionManager: NSObject
         }
 
         do {
-            let audioInput = AVCaptureDevice.defaultAudioInputDevice()
-            try! session.addInput(AVCaptureDeviceInput(device: audioInput))
+            let inputDevice = AVCaptureDevice.defaultAudioInputDevice()
+            if let input = try? AVCaptureDeviceInput(device: inputDevice) {
+                if session.canAddInput(input) {
+                    session.addInput(input)
+                }
+            }
 
             let audioOutput = AVCaptureAudioDataOutput()
             session.addOutput(audioOutput)
 
             session.automaticallyConfiguresApplicationAudioSession = true
         }
+        
+        //try? AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayAndRecord, with:[.defaultToSpeaker, .mixWithOthers])
+        //try? AVAudioSession.sharedInstance().setMode(AVAudioSessionModeMeasurement) //disable iOS audio processing
+        //try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     open var cameraPosition: AVCaptureDevicePosition = .back {
