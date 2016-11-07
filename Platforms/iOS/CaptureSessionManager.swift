@@ -25,13 +25,13 @@ open class CaptureSessionManager: NSObject
     
     public init(sessionPreset: String = AVCaptureSessionPresetMedium)
     {
-        super.init()
-
-        self.setupAudioSession()
-
         session = AVCaptureSession()
         session.sessionPreset = sessionPreset
         session.automaticallyConfiguresApplicationAudioSession = false
+
+        super.init()
+
+        self.setupAudioSession()
 
         self.sessionPreset = sessionPreset
 
