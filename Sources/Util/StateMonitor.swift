@@ -143,6 +143,7 @@ open class StateMonitor: NSObject
 
 	    if somethingIsWrongWithNetwork || somethingIsWrongWithAudioVideoInput
 	    {
+            print("publishing is broken!")
 		    NotificationCenter.default.post(name: .onPublishingBroken, object: self)
 	    }
 

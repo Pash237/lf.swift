@@ -25,10 +25,13 @@ open class CaptureSessionManager: NSObject
     
     public init(sessionPreset: String = AVCaptureSessionPresetMedium)
     {
+        super.init()
+
+        self.setupAudioSession()
+
         session = AVCaptureSession()
         session.sessionPreset = sessionPreset
-
-        super.init()
+        session.automaticallyConfiguresApplicationAudioSession = false
 
         self.sessionPreset = sessionPreset
 
@@ -39,6 +42,19 @@ open class CaptureSessionManager: NSObject
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+
+    func setupAudioSession()
+    {
+        //disable iOS audio processing
+        do {
+            try AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayAndRecord, with:[.defaultToSpeaker, .mixWithOthers])
+            try AVAudioSession.sharedInstance().setMode(AVAudioSessionModeMeasurement)
+            try AVAudioSession.sharedInstance().setActive(true)
+            logger.debug("iOS audio processing disabled, mode = \(AVAudioSession.sharedInstance().mode)")
+        } catch let error {
+            logger.debug("Unable to disable iOS audio processing: \(error)")
+        }
     }
     
     func setupCaptureSession()
@@ -68,13 +84,7 @@ open class CaptureSessionManager: NSObject
 
             let audioOutput = AVCaptureAudioDataOutput()
             session.addOutput(audioOutput)
-
-            session.automaticallyConfiguresApplicationAudioSession = true
         }
-        
-        //try? AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayAndRecord, with:[.defaultToSpeaker, .mixWithOthers])
-        //try? AVAudioSession.sharedInstance().setMode(AVAudioSessionModeMeasurement) //disable iOS audio processing
-        //try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     open var cameraPosition: AVCaptureDevicePosition = .back {
