@@ -589,6 +589,7 @@ fileprivate var totalVideoBytes: Int = 0
 fileprivate var totalAudioBytes: Int = 0
 fileprivate var inputBitrate: Double = 0
 fileprivate var bytesInLastMeasurement: Int = 0
+fileprivate var previousBytesInQueue: Int = 0
 fileprivate var lastBitrateMeasurementTime: Double = 0
 
 extension RTMPStream: RTMPMuxerDelegate {
@@ -671,8 +672,9 @@ extension RTMPStream {
         }
 
         let bytesInQueue = rtmpConnection.socket.bytesInQueue
+        let queueIsGrowing = previousBytesInQueue > 0 && bytesInQueue > previousBytesInQueue
 
-        let needToLowerBitrate = bytesInQueue > 100 * 1024
+        let needToLowerBitrate = bytesInQueue > 100 * 1024 || (bytesInQueue > 10 * 1024 && queueIsGrowing)
         let needToIncreaseBitrate = bytesInQueue < 10 * 1024
 
         if needToLowerBitrate || needToIncreaseBitrate {
@@ -701,7 +703,7 @@ extension RTMPStream {
 
             var newBitrate = Int(mixer.videoIO.encoder.bitrate)
 
-            let minimumBitrate = 16 * 1024
+            let minimumBitrate = 32000
             let maximumBitrate = mixer.videoIO.encoder.maximumBitrate
 
             newBitrate += change
@@ -715,7 +717,31 @@ extension RTMPStream {
 
             let outputBitrate = rtmpConnection.socket.outputBitrate
 
-            if newBitrate == minimumBitrate && ((bytesInQueue > 200 * 1024 && outputBitrate < 100 * 1024) || (bytesInQueue > 1000 * 1024)) {
+            if inputBitrate > outputBitrate && bytesInQueue > 200 * 1024 {
+                self.videoSettings["maximumBitrate"] = max(128 * 1024, outputBitrate * 8)
+
+                self.dispatch(Event.RTMP_STATUS, bubbles: false, data: [
+                        "level": "status",
+                        "code": "NetConnection.Connect.MaximumBitrateChanged",
+                        "description": "Maximum bitrate changed: \(outputBitrate * 8 / 1024) kbit/s"
+                ])
+            }
+
+            var notEnoughBandwidth = false
+
+            if bytesInQueue > 1000 * 1024 {
+                notEnoughBandwidth = true
+            }
+
+            if bytesInQueue > 1000 * 1024 {
+                notEnoughBandwidth = true
+            }
+
+            if bytesInQueue > 200 * 1024 && outputBitrate < 100 * 1024 && queueIsGrowing {
+                notEnoughBandwidth = true
+            }
+
+            if newBitrate == minimumBitrate && notEnoughBandwidth {
                 logger.warning("Not enough bandwidth!")
 
                 if !StateMonitor.shared.notEnoughBandwidth {
@@ -746,5 +772,7 @@ extension RTMPStream {
                 ])
             }
         }
+
+        previousBytesInQueue = bytesInQueue
     }
 }
