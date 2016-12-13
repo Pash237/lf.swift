@@ -74,10 +74,13 @@ open class StateMonitor: NSObject
 
 	open var debugStatusText: String
 	{
-		return "session – audio: \(audioCaptureSessionOutputActive), video: \(videoCaptureSessionOutputActive), " +
-				"encoder – audio: \(audioEncoderActive), video: \(videoEncoderActive), " +
-				"totalBytes – audio: \(totalAudioBytes) (\(audioInputActive)), video: \(totalVideoBytes) (\(videoInputActive)), " +
-				"outputBitrate: \(Int(socketOutputBitrate / 1000)) KBit, in queue: \(totalBytesInQueue / 1024) KB"
+		return "inputBitrate: \(Int(inputBitrate / 1000)) kbit/s, outputBitrate: \(Int(socketOutputBitrate / 1000)) kbit/s, " +
+				"in queue: \(totalBytesInQueue / 1024) KB " +
+				"videoBitrate: \(videoBitrate / 1024) kbit/s, " +
+				"session: audio \(audioCaptureSessionOutputActive ? 1 : 0), video \(videoCaptureSessionOutputActive ? 1 : 0), " +
+				"encoder: audio \(audioEncoderActive ? 1 : 0), video \(videoEncoderActive ? 1 : 0), " +
+				"totalBytes: audio \(totalAudioBytes) (\(audioInputActive)), video \(totalVideoBytes) (\(videoInputActive)), " +
+				(pauseUntil == nil ? "" : "...waiting \(Int(pauseUntil! - CFAbsoluteTimeGetCurrent())) seconds")
 	}
 
 	open var statusText: String?
@@ -128,6 +131,8 @@ open class StateMonitor: NSObject
 		    NotificationCenter.default.post(name: .onPublishingStatusChanged, object: self)
 	    }
 	    previousStatusText = statusText
+	
+	    NotificationCenter.default.post(name: Notification.Name("onStateMonitorStatus"), object: self)
 
 	    if let pauseUntil = pauseUntil {
             if CFAbsoluteTimeGetCurrent() < pauseUntil {
@@ -181,6 +186,7 @@ open class StateMonitor: NSObject
 	var socketOutputBitrate: Double = 0
 	var totalBytesInQueue: Int = 0
 	var videoBitrate: Int = 0
+	var inputBitrate: Double = 0
 
 	fileprivate var previousTotalAudioBytes: Int = -1
 	fileprivate var previousTotalVideoBytes: Int = -1

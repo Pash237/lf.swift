@@ -265,8 +265,12 @@ open class RTMPConnection: EventDispatcher {
 
     func close(isDisconnected:Bool) {
         guard connected || isDisconnected else {
+            print("Not closing RTMP connection \(self) connected: \(connected), isDisconnected: \(isDisconnected)")
             return
         }
+        
+        print("Closing RTMP connection \(self)...")
+        
         if (!isDisconnected) {
             uri = nil
         }

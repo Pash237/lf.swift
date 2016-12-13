@@ -382,6 +382,8 @@ open class RTMPStream: NetStream {
     open func publish(_ name:String?, type:RTMPStream.HowToPublish = .live) {
         lockQueue.async {
             guard let name:String = name else {
+                print("RTMP stream readyState = \(self.readyState)")
+                
                 guard self.readyState == .publishing else {
                     self.howToPublish = type
                     switch type {
@@ -394,7 +396,7 @@ open class RTMPStream: NetStream {
                     return
                 }
 
-                logger.debug("Stop publishing")
+                logger.debug("Stop publishing \(self)")
 
                 self.readyState = .open
                 self.removeOutputDelegates()
@@ -419,6 +421,7 @@ open class RTMPStream: NetStream {
                         commandObject: nil,
                         arguments: []
                 )))
+                print("RTMP stream unpublished \(self)...")
                 return
             }
 
@@ -474,8 +477,11 @@ open class RTMPStream: NetStream {
 
     open func close() {
         if (self.readyState == .closed) {
+            print("Not closing RTMP stream \(self), self.readyState = \(self.readyState)")
             return
         }
+        print("Closing RTMP stream \(self)...")
+        
         play()
         publish(nil)
         
@@ -492,6 +498,7 @@ open class RTMPStream: NetStream {
                     arguments: [self.id]
             )))
             self.readyState = .closed
+            print("RTMP stream closed...")
         }
     }
 
@@ -642,6 +649,7 @@ extension RTMPStream: RTMPMuxerDelegate {
         let now = CFAbsoluteTimeGetCurrent()
         if now - lastBitrateMeasurementTime > 1.0 {
             inputBitrate = Double(bytesInLastMeasurement) / (now - lastBitrateMeasurementTime)
+            StateMonitor.shared.inputBitrate = inputBitrate
             lastBitrateMeasurementTime = now
             bytesInLastMeasurement = 0
         }
@@ -651,18 +659,22 @@ extension RTMPStream: RTMPMuxerDelegate {
 // MARK: - Adaptive bitrate
 extension RTMPStream {
     func startCheckingForBitrateChanges() {
+        logger.warning("Start checking for bitrate changes \(self)")
         DispatchQueue.main.async {
             self.bitrateCheckTimer = Timer.scheduledTimer(timeInterval: 2.0, target: self, selector: #selector(self.adjustBitrate), userInfo: nil, repeats: true)
         }
     }
 
     func stopCheckingForBitrateChanges() {
+        logger.warning("Stop checking for bitrate changes \(self)")
         bitrateCheckTimer?.invalidate()
         bitrateCheckTimer = nil
     }
 
     func adjustBitrate() {
-        let statusString = "In queue: \(rtmpConnection.socket.bytesInQueue / 1024) kb, " +
+        logger.warning("Adjusting bitrate \(self)")
+        
+        let statusString = "In queue: \(rtmpConnection.socket.bytesInQueue / 1024) | \(StateMonitor.shared.totalBytesInQueue) kb, " +
                 "totalVideoBytes: \(totalVideoBytes / 1024) kb, totalAudioBytes: \(totalAudioBytes / 1024) kb, " +
                 "input bitrate: \(round(inputBitrate / 1024)) kb/s, " +
                 "output bitrate: \(round(rtmpConnection.socket.outputBitrate / 1024)) kb/s"
@@ -671,7 +683,7 @@ extension RTMPStream {
             return
         }
 
-        let bytesInQueue = rtmpConnection.socket.bytesInQueue
+        let bytesInQueue = max(StateMonitor.shared.totalBytesInQueue, rtmpConnection.socket.bytesInQueue)
         let queueIsGrowing = previousBytesInQueue > 0 && bytesInQueue > previousBytesInQueue
 
         let needToLowerBitrate = bytesInQueue > 100 * 1024 || (bytesInQueue > 10 * 1024 && queueIsGrowing)
@@ -733,10 +745,6 @@ extension RTMPStream {
                 notEnoughBandwidth = true
             }
 
-            if bytesInQueue > 1000 * 1024 {
-                notEnoughBandwidth = true
-            }
-
             if bytesInQueue > 200 * 1024 && outputBitrate < 100 * 1024 && queueIsGrowing {
                 notEnoughBandwidth = true
             }
@@ -754,6 +762,7 @@ extension RTMPStream {
 
                 StateMonitor.shared.notEnoughBandwidth = true
             } else {
+                logger.warning("Bandwidth is enough")
                 StateMonitor.shared.notEnoughBandwidth = false
             }
 
