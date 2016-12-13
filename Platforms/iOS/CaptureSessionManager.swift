@@ -38,6 +38,7 @@ open class CaptureSessionManager: NSObject
         setupCaptureSession()
 
         NotificationCenter.default.addObserver(self, selector: #selector(onOrientationChanged(_:)), name: NSNotification.Name.UIApplicationDidChangeStatusBarOrientation, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onSubjectAreaChanged(_:)), name: NSNotification.Name.AVCaptureDeviceSubjectAreaDidChange, object: nil)
     }
 
     deinit {
@@ -113,6 +114,83 @@ open class CaptureSessionManager: NSObject
 
                     orientation = DeviceUtil.videoOrientation(by: UIApplication.shared.statusBarOrientation)
                 }
+            }
+        }
+    }
+    
+    open var focusPointOfInterest: CGPoint = CGPoint(x: 0.5, y: 0.5) {
+        didSet {
+            guard let device = session.videoInput?.device,
+                  device.isFocusPointOfInterestSupported else {
+                return
+            }
+            
+            print("Setting new focus point: \(focusPointOfInterest)")
+            
+            do {
+                try device.lockForConfiguration()
+                device.isSubjectAreaChangeMonitoringEnabled = false
+                device.focusPointOfInterest = focusPointOfInterest
+                device.focusMode = .autoFocus   //focus and lock
+                device.unlockForConfiguration()
+            } catch let error as NSError {
+                logger.error("while locking device for focusPointOfInterest: \(error)")
+            }
+        }
+    }
+    
+    open var enableContinuousFocus: Bool = true {
+        didSet {
+            guard let device = session.videoInput?.device,
+                  device.isFocusPointOfInterestSupported else {
+                return
+            }
+            
+            if enableContinuousFocus {
+                print("Setting continuous focus mode")
+    
+                do {
+                    try device.lockForConfiguration()
+                    device.isSubjectAreaChangeMonitoringEnabled = true
+                    device.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
+                    device.focusMode = .continuousAutoFocus
+                    device.unlockForConfiguration()
+                } catch let error as NSError {
+                    logger.error("while locking device for continuousAutoFocus: \(error)")
+                }
+            } else {
+                print("Setting manual focus mode")
+                
+                do {
+                    try device.lockForConfiguration()
+                    device.isSubjectAreaChangeMonitoringEnabled = false
+                    device.focusPointOfInterest = focusPointOfInterest
+                    device.focusMode = .autoFocus   //focus and lock
+                    device.unlockForConfiguration()
+                } catch let error as NSError {
+                    logger.error("while locking device for autoFocus: \(error)")
+                }
+            }
+        }
+    }
+    
+    func onSubjectAreaChanged(_ notification:Notification)
+    {
+        guard let device = session.videoInput?.device,
+              device.isFocusPointOfInterestSupported else {
+            return
+        }
+    
+        if device.focusMode == .locked {
+            do {
+                print("Subject area changed – changing focus")
+                
+                try device.lockForConfiguration()
+                device.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
+                device.focusMode = .continuousAutoFocus
+                device.unlockForConfiguration()
+            } catch let error as NSError {
+                logger.error("while locking device for continuousAutoFocus: \(error)")
             }
         }
     }

@@ -9,7 +9,7 @@ open class LFView: UIView {
         return AVCaptureVideoPreviewLayer.self
     }
 
-    var previewLayer: AVCaptureVideoPreviewLayer {
+    public var previewLayer: AVCaptureVideoPreviewLayer {
         return self.layer as! AVCaptureVideoPreviewLayer
     }
 
